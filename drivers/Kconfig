@@ -124,6 +124,4 @@ source "drivers/hwspinlock/Kconfig"
 
 source "drivers/clocksource/Kconfig"
 
-source "drivers/ril/Kconfig"
-
 endmenu
