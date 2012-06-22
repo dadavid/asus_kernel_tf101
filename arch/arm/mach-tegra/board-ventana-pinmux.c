@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
+#include <mach/board-ventana-misc.h>
 #include <mach/pinmux.h>
 
 #include "board-ventana.h"
@@ -55,6 +56,13 @@
 		.pull_up = TEGRA_PULL_31,			\
 		.slew_rising = TEGRA_SLEW_SLOWEST,		\
 		.slew_falling = TEGRA_SLEW_SLOWEST,		\
+	}
+
+#define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
+	{								\
+		.gpio_nr	= _gpio,		\
+		.is_input	= _is_input,	\
+		.value		= _value,		\
 	}
 
 static __initdata struct tegra_drive_pingroup_config ventana_drive_pinmux[] = {
@@ -195,8 +203,38 @@ static struct tegra_gpio_table gpio_table[] = {
 	{ .gpio = TEGRA_GPIO_EXT_MIC_EN,	.enable = true	},
 };
 
+static struct gpio_init_pin_info init_gpio_mode_TF101G[] = {
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR7, false, 0), //GPIO_3G_Power_PIN
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PD1, false, 0), //GPIO_Enable_RF_PIN
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PD0, false, 0), //GPIO_3G_Reset_PIN
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG1, false, 0), //GPIO_SAR_DET_3G
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PC7, false, 0), //GPIO_SIM_PIN
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ6, false, 0), //GPIO_MODEM_WAKEUP
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PV1, false, 0), //GPIO_ULPI_Reset_PIN
+};
+
+static void ventana_gpio_init_configure(void)
+{
+	int len;
+	int i;
+	struct gpio_init_pin_info *pins_info;
+
+	len = ARRAY_SIZE(init_gpio_mode_TF101G);
+	pins_info = init_gpio_mode_TF101G;
+
+	for (i = 0; i < len; ++i) {
+		tegra_gpio_init_configure(pins_info->gpio_nr,
+			pins_info->is_input, pins_info->value);
+		pins_info++;
+	}
+}
+
 int __init ventana_pinmux_init(void)
 {
+	if (ASUS3GAvailable()) {
+		pr_info("3G available - gpio_init_configure\n");
+		ventana_gpio_init_configure();
+	}
 	tegra_pinmux_config_table(ventana_pinmux, ARRAY_SIZE(ventana_pinmux));
 	tegra_drive_pinmux_config_table(ventana_drive_pinmux,
 					ARRAY_SIZE(ventana_drive_pinmux));
