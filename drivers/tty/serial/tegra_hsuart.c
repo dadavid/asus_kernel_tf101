@@ -502,12 +502,14 @@ static void tegra_tx_dma_complete_callback(struct tegra_dma_req *req)
 	/* Update xmit pointers without lock if dma aborted. */
 	if (req->status == -TEGRA_DMA_REQ_ERROR_ABORTED) {
 		xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
+                t->uport.icount.tx+= count;
 		t->tx_in_progress = 0;
 		return;
 	}
 
 	spin_lock_irqsave(&t->uport.lock, flags);
 	xmit->tail = (xmit->tail + count) & (UART_XMIT_SIZE - 1);
+        t->uport.icount.tx+= count;
 	t->tx_in_progress = 0;
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
