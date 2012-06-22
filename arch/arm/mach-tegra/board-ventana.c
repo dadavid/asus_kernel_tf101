@@ -188,7 +188,7 @@ static struct tegra_ulpi_config ventana_ehci2_ulpi_phy_config = {
 
 static struct tegra_ehci_platform_data ventana_ehci2_ulpi_platform_data = {
 	.operating_mode = TEGRA_USB_HOST,
-	.power_down_on_bus_suspend = 0,
+	.power_down_on_bus_suspend = 1,
 	.phy_config = &ventana_ehci2_ulpi_phy_config,
 	.phy_type = TEGRA_USB_PHY_TYPE_LINK_ULPI,
 };
@@ -439,6 +439,19 @@ static struct platform_device ventana_audio_device = {
 	},
 };
 
+static struct resource ram_console_resources[] = {
+	{
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device ram_console_device = {
+	.name 		= "ram_console",
+	.id 		= -1,
+	.num_resources	= ARRAY_SIZE(ram_console_resources),
+	.resource	= ram_console_resources,
+};
+
 static struct platform_device *ventana_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_gart_device,
@@ -458,6 +471,7 @@ static struct platform_device *ventana_devices[] __initdata = {
 	&ventana_bcm4329_rfkill_device,
 	&tegra_pcm_device,
 	&ventana_audio_device,
+	&ram_console_device,
 };
 
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
@@ -770,12 +784,33 @@ int __init tegra_ventana_protected_aperture_init(void)
 }
 late_initcall(tegra_ventana_protected_aperture_init);
 
+static void __init ventana_ramconsole_reserve(unsigned long size)
+{
+	struct resource *res;
+	long ret;
+
+	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
+	if (!res) {
+		pr_err("Failed to find memory resource for ram console\n");
+		return;
+	}
+	res->start = memblock_end_of_DRAM() - size;
+	res->end = res->start + size - 1;
+	ret = memblock_remove(res->start, size);
+	if (ret) {
+		ram_console_device.resource = NULL;
+		ram_console_device.num_resources = 0;
+		pr_err("Failed to reserve memory block for ram console\n");
+	}
+}
+
 void __init tegra_ventana_reserve(void)
 {
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
 	tegra_reserve(SZ_256M, SZ_8M + SZ_1M, SZ_16M);
+	ventana_ramconsole_reserve(SZ_1M);
 }
 
 MACHINE_START(VENTANA, "ventana")
